@@ -22,8 +22,28 @@
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
+#include "stm32f746xx.h"
+#include "reg_util.h"
+
+void SystemClock_Setup(void);
+
 int main(void)
 {
-    /* Loop forever */
-	for(;;);
+	/* Loop forever */
+	for (;;)
+		;
+}
+
+void SystemClock_Setup(void)
+{
+	RCC_TypeDef *pRCC = RCC;
+
+	/* Setting up main PLL
+	 * PLL_M
+	 * PLL_N
+	 * PLL_P
+	 * */
+	REG_SET_VAL(pRCC->PLLCFGR, 0x8U, 0x3FU, RCC_PLLCFGR_PLLM_Pos);
+	REG_SET_VAL(pRCC->PLLCFGR, 0x216U, 0x1FFU, RCC_PLLCFGR_PLLN_Pos);
+	REG_SET_VAL(pRCC->PLLCFGR, 0x0U, 0x03U, RCC_PLLCFGR_PLLP_Pos);
 }
