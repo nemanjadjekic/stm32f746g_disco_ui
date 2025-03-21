@@ -30,20 +30,51 @@ void SystemClock_Setup(void);
 int main(void)
 {
 	/* Loop forever */
-	for (;;)
-		;
+	for (;;);
 }
 
 void SystemClock_Setup(void)
 {
 	RCC_TypeDef *pRCC = RCC;
+	PWR_TypeDef *pPWR = PWR;
+	FLASH_TypeDef *pFlash = FLASH;
 
-	/* Setting up main PLL
-	 * PLL_M
-	 * PLL_N
-	 * PLL_P
-	 * */
-	REG_SET_VAL(pRCC->PLLCFGR, 0x8U, 0x3FU, RCC_PLLCFGR_PLLM_Pos);
-	REG_SET_VAL(pRCC->PLLCFGR, 0x216U, 0x1FFU, RCC_PLLCFGR_PLLN_Pos);
-	REG_SET_VAL(pRCC->PLLCFGR, 0x0U, 0x03U, RCC_PLLCFGR_PLLP_Pos);
+	/* Set Flash read latency to 7WS (Wait States) */
+	REG_SET_VAL(pFlash->ACR, 0x07U, 0x0FU, FLASH_ACR_LATENCY_Pos);
+
+	/* Enable power interface clock
+	 * Set power scale to 1
+	 * reference: (STM32F745xx, STM32F746xx Data sheet, Section: 5.3.1)
+	 * Enable over-drive and wait for over-drive switching status */
+	REG_SET_BIT(pRCC->APB1ENR, RCC_APB1ENR_PWREN_Pos);
+	REG_SET_VAL(pPWR->CR1, 0x03U, 0x03U, PWR_CR1_VOS_Pos);
+	REG_SET_BIT(pPWR->CR1, PWR_CR1_ODEN_Pos);
+	while (!REG_READ_BIT(pPWR->CR1, PWR_CR1_ODSWEN_Pos));
+
+	/* Main PLL settings: PLL_M, PLL_N, PLL_P */
+	REG_SET_VAL(pRCC->PLLCFGR, 0x08U, 0x3FU, RCC_PLLCFGR_PLLM_Pos);
+	REG_SET_VAL(pRCC->PLLCFGR, 216U, 0x1FFU, RCC_PLLCFGR_PLLN_Pos);
+	REG_SET_VAL(pRCC->PLLCFGR, 0x00U, 0x03U, RCC_PLLCFGR_PLLP_Pos);
+
+	/* PLL SAI settings:  PLLSAI_N, PLLSAI_R, DIV */
+	REG_SET_VAL(pRCC->PLLSAICFGR, 50U, 0xFFU, RCC_PLLSAICFGR_PLLSAIN_Pos);
+	REG_SET_VAL(pRCC->PLLSAICFGR, 0x02U, 0x07U, RCC_PLLSAICFGR_PLLSAIR_Pos);
+	REG_SET_VAL(pRCC->DCKCFGR1, 0x00U, 0x03U, RCC_DCKCFGR1_PLLSAIDIVR_Pos);
+
+	/* Turn on PLLSAI and wait until PLLSAICLK ready bit is set */
+	REG_SET_BIT(pRCC->CR, RCC_CR_PLLSAION_Pos);
+	while (!REG_READ_BIT(pRCC->CR, RCC_CR_PLLSAIRDY_Pos));
+
+	/* Clock settings: AHB = 216 MHz, APB1 = 54 MHz, APB2 = 108 MHz*/
+	REG_SET_VAL(pRCC->CFGR, 0x00U, 0x0FU, RCC_CFGR_HPRE_Pos);
+	REG_SET_VAL(pRCC->CFGR, 0x05U, 0x07U, RCC_CFGR_PPRE1_Pos);
+	REG_SET_VAL(pRCC->CFGR, 0x04U, 0x07U, RCC_CFGR_PPRE2_Pos);
+
+	/* Turn on main PLL and wait for PLLCLK to be ready */
+	REG_SET_BIT(pRCC->CR, RCC_CR_PLLON_Pos);
+	while (!REG_READ_BIT(pRCC->CR, RCC_CR_PLLRDY_Pos));
+
+	/* Set PLL clock as System Clock and wait for the switch status */
+	REG_SET_VAL(pRCC->CFGR, 0x02U, 0x03U, RCC_CFGR_SW_Pos);
+	while (!(REG_READ_VAL(pRCC->CFGR, 0x03U, RCC_CFGR_SWS_Pos) == 0x02U));
 }
