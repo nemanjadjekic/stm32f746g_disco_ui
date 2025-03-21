@@ -22,10 +22,10 @@
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
-#include "stm32f746xx.h"
-#include "reg_util.h"
+#include "bsp_lcd.h"
 
 void SystemClock_Setup(void);
+void LTDC_Pin_Init(void);
 
 int main(void)
 {
@@ -77,4 +77,20 @@ void SystemClock_Setup(void)
 	/* Set PLL clock as System Clock and wait for the switch status */
 	REG_SET_VAL(pRCC->CFGR, 0x02U, 0x03U, RCC_CFGR_SW_Pos);
 	while (!(REG_READ_VAL(pRCC->CFGR, 0x03U, RCC_CFGR_SWS_Pos) == 0x02U));
+}
+
+void LTDC_Pin_Init(void)
+{
+	/* Enable GPIO peripheral clocks */
+	REG_SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOEEN_Pos);
+	REG_SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOGEN_Pos);
+	REG_SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOIEN_Pos);
+	REG_SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOJEN_Pos);
+	REG_SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOKEN_Pos);
+
+
+	for (int i = 0; i < total_ltdc_pins; i++)
+	{
+		REG_SET_VAL(ltdc_io_ports[i]->MODER, 2U, 0x0FU, (ltdc_pins[i] * 2U));
+	}
 }
